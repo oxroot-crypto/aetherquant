@@ -1,0 +1,30 @@
+{
+  "name": "aetherquant",
+  "private": true,
+  "version": "1.0.0",
+  "author": "oxroot",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
+  },
+  "dependencies": {
+    "lightweight-charts": "^5.2.0",
+    "vue": "^3.5.34",
+    "vue-i18n": "^10.0.7"
+  },
+  "devDependencies": {
+    "@tauri-apps/api": "^2.11.0",
+    "@tauri-apps/cli": "^2.11.2",
+    "@types/node": "^24.12.3",
+    "@vitejs/plugin-vue": "^6.0.6",
+    "@vue/tsconfig": "^0.9.1",
+    "sharp": "^0.34.5",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.12",
+    "vue-tsc": "^3.2.8"
+  }
+}

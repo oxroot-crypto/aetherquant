@@ -1,0 +1,5 @@
+export { maStrategy } from '@/plugins/strategies/ma-strategy'
+export { macdStrategy } from '@/plugins/strategies/macd-strategy'
+export { rsiStrategy } from '@/plugins/strategies/rsi-strategy'
+export { bollingerStrategy } from '@/plugins/strategies/bollinger-strategy'
+export { emaStrategy } from '@/plugins/strategies/ema-strategy'
