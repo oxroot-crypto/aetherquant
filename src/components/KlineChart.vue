@@ -29,7 +29,7 @@ const chartContainer = ref<HTMLElement | null>(null)
 const legend = ref<LegendData | null>(null)
 
 // 解构 useChart，传入图例回调
-const { setData, setIndicator, clearIndicators } = useChart(chartContainer, (d) => { legend.value = d })
+const { setData, fitView, setIndicator, setOscillator, clearIndicators } = useChart(chartContainer, (d) => { legend.value = d })
 
 // 监听 data 变化：有数据就渲染图表
 watch(
@@ -41,7 +41,7 @@ watch(
 )
 
 // 暴露指标接口给父组件（App.vue 调用 setIndicator/clearIndicators 画 MA 线）
-defineExpose({ setIndicator, clearIndicators })
+defineExpose({ setIndicator, setOscillator, clearIndicators, fitView })
 </script>
 
 <template>
@@ -72,6 +72,16 @@ defineExpose({ setIndicator, clearIndicators })
       <span>+/- 缩放</span>
       <span>←→ 平移</span>
       <span>F 适应</span>
+    </div>
+
+    <!-- 指标图例标注 -->
+    <div class="indicator-legend">
+      <div class="ind-label"><span class="ind-dot" style="background:#ff9800"></span>MA7</div>
+      <div class="ind-label"><span class="ind-dot" style="background:#2196f3"></span>MA25</div>
+      <div class="ind-label"><span class="ind-dot" style="background:#4caf50;border:1px dashed #4caf50"></span>BB上</div>
+      <div class="ind-label"><span class="ind-dot" style="background:#ffeb3b"></span>BB中</div>
+      <div class="ind-label"><span class="ind-dot" style="background:#f44336;border:1px dashed #f44336"></span>BB下</div>
+      <div class="ind-label ind-rsi"><span class="ind-dot" style="background:#00e5ff"></span>RSI</div>
     </div>
 
     <!-- 图表容器（lightweight-charts 挂载到这里） -->
@@ -134,5 +144,36 @@ defineExpose({ setIndicator, clearIndicators })
   color: var(--text-muted);
   opacity: 0.5;
   pointer-events: none;
+}
+
+/* 指标图例标注——右上角，半透明背景，不挡鼠标 */
+.indicator-legend {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 10px;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 4px;
+  padding: 4px 8px;
+  pointer-events: none;
+}
+.ind-label {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.ind-label.ind-rsi { opacity: 0.7; } /* RSI 在独立窗格里，稍微虚化 */
+.ind-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
 }
 </style>

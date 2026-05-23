@@ -30,6 +30,9 @@ import {
   type HistogramSeriesPartialOptions,
   type LineSeriesPartialOptions,
   type Time,
+  type TickMarkFormatter,
+  type IPaneApi,
+  TickMarkType,
   ColorType,
   CrosshairMode,
 } from 'lightweight-charts'
@@ -51,11 +54,25 @@ function readThemeColors() {
 }
 
 /**
- * 构建 lightweight-charts 初始化配置项。
- * 自动跟随当前主题颜色生成统一的图表外观。
- * 十字光标用 Normal 模式（同时显示竖线和横线），
- * 时间轴显示日期，不显示秒。
+ * 自定义时间轴刻度格式化器——用系统本地时区替代默认个 UTC。
+ * 默认 UTC 会比北京时间早 8 小时，用个格式化器显示本地时间。
  */
+const localTickMarkFormatter: TickMarkFormatter = (time, tickMarkType) => {
+  const d = new Date((time as number) * 1000)
+  switch (tickMarkType) {
+    case TickMarkType.Year:
+      return String(d.getFullYear())
+    case TickMarkType.Month:
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    case TickMarkType.DayOfMonth:
+      return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    case TickMarkType.TimeWithSeconds:
+      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
+    default: // Time
+      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  }
+}
+
 function buildChartOptions(width: number, height: number) {
   const c = readThemeColors()
   return {
@@ -65,7 +82,7 @@ function buildChartOptions(width: number, height: number) {
     grid: { vertLines: { color: c.grid }, horzLines: { color: c.grid } },
     crosshair: { mode: CrosshairMode.Normal },
     rightPriceScale: { borderColor: c.border, autoScale: true },
-    timeScale: { borderColor: c.border, timeVisible: true, secondsVisible: false },
+    timeScale: { borderColor: c.border, timeVisible: true, secondsVisible: false, tickMarkFormatter: localTickMarkFormatter },
     handleScroll: { vertTouchDrag: false }, // 禁止垂直拖拽，只保留水平滚动
   }
 }
@@ -109,7 +126,9 @@ const INDICATOR_STYLES: Record<string, LineSeriesPartialOptions> = {
   ema9: { color: '#e040fb', lineWidth: 1, priceLineVisible: false, lastValueVisible: true, lineStyle: 2 },
   ema21: { color: '#7c4dff', lineWidth: 1, priceLineVisible: false, lastValueVisible: true, lineStyle: 2 },
   bbUpper: { color: '#4caf50', lineWidth: 1, priceLineVisible: false, lineStyle: 2 },
+  bbMiddle: { color: '#ffeb3b', lineWidth: 1, priceLineVisible: false },
   bbLower: { color: '#f44336', lineWidth: 1, priceLineVisible: false, lineStyle: 2 },
+  rsi: { color: '#00e5ff', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: true },
 }
 
 /**
@@ -127,6 +146,11 @@ export function useChart(containerRef: Ref<HTMLElement | null>, onLegend?: (d: L
 
   // 指标线注册表：key → LineSeries 实例
   const indicatorLines = new Map<string, ISeriesApi<'Line'>>()
+
+  // 振荡器指标（如 RSI）——独立窗格，跟主图共享时间轴但有自己的价格刻度
+  let oscillatorPane: IPaneApi<Time> | null = null
+  let oscillatorLine: ISeriesApi<'Line'> | null = null
+  let oscillatorPaneIndex = -1
 
   // MutationObserver：监听 <html> 的 data-theme 属性变化，即时更新图表配色
   let observer: MutationObserver | null = null
@@ -307,12 +331,21 @@ export function useChart(containerRef: Ref<HTMLElement | null>, onLegend?: (d: L
       value: d.volume,
       color: d.close >= d.open ? 'rgba(0, 200, 83, 0.3)' : 'rgba(255, 23, 68, 0.3)',
     })))
+  }
 
-    // 控制初始可视范围：最多显示 60 根，多了就只看最新 60 根
+  /**
+   * 重置视图——显示最新 60 根 K线。
+   * 只在切换币对/周期等大动作时调用，实时数据更新不调渠，
+   * 保证用户个缩放/平移操作不会被打断。
+   */
+  function fitView() {
+    if (!chart.value) return
+    const data = candleCache
+    if (data.length === 0) return
     const visibleBars = Math.min(60, data.length)
     if (data.length > visibleBars) {
-      const from = (data[data.length - visibleBars].timestamp / 1000) as Time
-      const to = (data[data.length - 1].timestamp / 1000) as Time
+      const from = data[data.length - visibleBars].time
+      const to = data[data.length - 1].time
       chart.value.timeScale().setVisibleRange({ from, to })
     } else {
       chart.value.timeScale().fitContent()
@@ -348,6 +381,43 @@ export function useChart(containerRef: Ref<HTMLElement | null>, onLegend?: (d: L
   }
 
   /**
+   * 在独立窗格里叠加振荡器指标（RSI 等 0-100 范围个指标）。
+   * 首次调用会自动创建一只新窗格，后续调用只更新数据。
+   * 窗格高度为主窗格个 25%，放在底下。
+   *
+   * @param key   指标标识（对应 INDICATOR_STYLES 里个 key）
+   * @param data  OHLCV 数据
+   * @param field 从每根 K线提取指标值
+   */
+  function setOscillator(key: string, data: OHLCV[], field: (d: OHLCV, i: number) => number) {
+    if (!chart.value) return
+
+    // 首次调用：创建独立窗格
+    if (!oscillatorPane) {
+      oscillatorPane = chart.value.addPane(true)
+      oscillatorPaneIndex = oscillatorPane.paneIndex()
+      // 主窗格 stretchFactor 默认是 1，振荡器窗格设 0.35 使其约占 25%
+      oscillatorPane.setStretchFactor(0.35)
+    }
+
+    const lineData = data
+      .map((d, i) => ({
+        time: (d.timestamp / 1000) as Time,
+        value: field(d, i),
+      }))
+      .filter(p => Number.isFinite(p.value))
+
+    const opts = INDICATOR_STYLES[key] ?? { color: '#00e5ff', lineWidth: 1, priceLineVisible: false }
+
+    if (oscillatorLine) {
+      oscillatorLine.setData(lineData)
+    } else {
+      oscillatorLine = oscillatorPane.addSeries(LineSeries, opts)
+      oscillatorLine.setData(lineData)
+    }
+  }
+
+  /**
    * 清空全部指标线。一般在切换币对时调用，防止旧指标还残留在图上。
    */
   function clearIndicators() {
@@ -355,7 +425,13 @@ export function useChart(containerRef: Ref<HTMLElement | null>, onLegend?: (d: L
       chart.value?.removeSeries(series)
     }
     indicatorLines.clear()
+
+    // 清空振荡器窗格
+    if (oscillatorLine) {
+      chart.value?.removeSeries(oscillatorLine)
+      oscillatorLine = null
+    }
   }
 
-  return { chart, candleSeries, volumeSeries, setData, setIndicator, clearIndicators }
+  return { chart, candleSeries, volumeSeries, setData, fitView, setIndicator, setOscillator, clearIndicators }
 }

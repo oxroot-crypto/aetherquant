@@ -30,6 +30,7 @@ import TitleBar from '@/components/TitleBar.vue'
 import Toolbar from '@/components/Toolbar.vue'
 import KlineChart from '@/components/KlineChart.vue'
 import AnalysisPanel from '@/components/AnalysisPanel.vue'
+import { calcRSI, calcBollinger } from '@/utils/indicators'
 import type { OHLCV, CandleInterval } from '@/types'
 
 // ====== 核心状态 ======
@@ -136,20 +137,31 @@ function calcSMA(data: OHLCV[], period: number): number[] {
 }
 
 /**
- * 在图表上叠加 MA7 和 MA25 指标线。
- * 先清掉旧指标（切换币种时止损旧线残留），再画新的。
+ * 在图表上叠加所有指标线：MA7/MA25（均线）、布林带（上下中轨，叠加在价格图），
+ * RSI(14)（独立窗格）。
+ * 先清掉旧指标，再画新的——切换币种时止损旧线残留。
  */
 function plotIndicators() {
   const d = data.value
   if (d.length === 0 || !chartRef.value) return
   chartRef.value.clearIndicators()
 
+  // ① 均线 MA7 / MA25
   const ma7 = calcSMA(d, 7)
   const ma25 = calcSMA(d, 25)
-
-  // key 对应 INDICATOR_STYLES 表里的预设样式
   chartRef.value.setIndicator('ma7', d, (_d, i) => ma7[i])
   chartRef.value.setIndicator('ma25', d, (_d, i) => ma25[i])
+
+  // ② 布林带（20, 2）——上轨 / 中轨 / 下轨
+  const closes = d.map(p => p.close)
+  const bb = calcBollinger(closes, 20, 2)
+  chartRef.value.setIndicator('bbUpper', d, (_d, i) => bb[i].upper)
+  chartRef.value.setIndicator('bbMiddle', d, (_d, i) => bb[i].middle)
+  chartRef.value.setIndicator('bbLower', d, (_d, i) => bb[i].lower)
+
+  // ③ RSI(14)——独立窗格（0-100 振荡器）
+  const rsi = calcRSI(closes, 14)
+  chartRef.value.setOscillator('rsi', d, (_d, i) => rsi[i])
 }
 
 // WebSocket 实时订阅状态
@@ -191,6 +203,7 @@ async function fetchData() {
     await run(result)           // 先跑分析，得到 AnalysisResult[] 列表
     await nextTick()            // 等 Vue 渲染完分析面板
     plotIndicators()            // 再画图表指标线
+    chartRef.value?.fitView()   // 切换币对/周期时重置视图，显示最新 60 根
     wsStart(symbol.value, interval.value) // 开启 WebSocket 实时流
   } catch (e) {
     console.error('Failed to fetch data:', e)
