@@ -1,3 +1,15 @@
+/*
+ * AetherQuant — 加密货币 K线量化分析平台
+ *
+ * 开源许可：MIT
+ * 代码仓：  https://github.com/oxroot-crypto/aetherquant
+ * 作者：   oxroot
+ *
+ * 全局样式重置。盒子模型统走 border-box，字体走系统原生栈。
+ * body 禁止滚动（图表自己管溢出），滚动条自定义配色。
+ * 先 import themes.css 拿齐双主题 CSS 变量，后头全部颜色拢走 var(--xxx)。
+ */
+
 @import './themes.css';
 
 *,

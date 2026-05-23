@@ -1,14 +1,30 @@
 <!doctype html>
-<html lang="en">
+<!--
+  AetherQuant — 加密货币 K线量化分析平台
+
+  开源许可：MIT
+  代码仓：  https://github.com/oxroot-crypto/aetherquant
+  作者：   oxroot
+
+  SPA 入口。——该只文件是 Vite dev/build 个根。
+  构建时 Vite 自动注入 <script> 标签，#app 由 Vue 接手。
+  viewport 禁止缩放（桌面应用不消捏合手势）。
+  Tauri 打包时也走该只文件，从 dist/ 目录加载。
+-->
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- 桌面端应用不需要移动端缩放功能 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AetherQuant</title>
+    <!-- 主图标：SVG 格式，现代浏览器/Tauri 都支持 -->
     <link rel="icon" href="/src/assets/icon.svg" />
   </head>
   <body>
+    <!-- Vue 应用挂载点 -->
     <div id="app"></div>
+    <!-- Vite 入口：src/main.ts，构建时会自动替换成带 hash 的 JS bundle -->
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

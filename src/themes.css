@@ -1,3 +1,16 @@
+/*
+ * AetherQuant — 加密货币 K线量化分析平台
+ *
+ * 开源许可：MIT
+ * 代码仓：  https://github.com/oxroot-crypto/aetherquant
+ * 作者：   oxroot
+ *
+ * 设计令牌——全部 CSS 自定义属性拢到该只文件。深色（默认 :root）加浅色
+ * （[data-theme='light']）两套，每套拢含：背景三阶、文字三层、边框、强调色渐变、
+ * 图表四色、买卖信号色、标题栏/工具栏/滚动条/评分条配色。
+ * 切主题就改一哈 <html> 个 data-theme 属性，全部颜色跟倒变。
+ */
+
 /* ====== Dark Theme (default) ====== */
 :root {
   --bg-primary: #1a1a2e;

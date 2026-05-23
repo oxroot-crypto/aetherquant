@@ -1,3 +1,11 @@
+/**
+ * AetherQuant — 加密货币 K线量化分析平台
+ * 开源许可：MIT  /  代码仓：https://github.com/oxroot-crypto/aetherquant  /  作者：oxroot
+ *
+ * 中文语言包——默认语言。同 en.ts 结构一样，改个是简体中文翻译。
+ * 拢共覆盖哩标题、工具栏、面板、评级、摘要等全部 UI 文案。
+ */
+
 export default {
   app: {
     title: 'AetherQuant',

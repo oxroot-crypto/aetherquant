@@ -1,4 +1,16 @@
 <script setup lang="ts">
+/**
+ * AetherQuant — 加密货币 K线量化分析平台
+ *
+ * 开源许可：MIT
+ * 代码仓：  https://github.com/oxroot-crypto/aetherquant
+ * 作者：   oxroot
+ *
+ * 交易行下拉选择器。跟 CoinSelector 长得像但更简单——交易行拢共就一两只，
+ * 不消搜索功能。每项显示名称 + 描述，激活个打 ✓ 标记。
+ * 点外头自动关，clickOutside 事件在 document 上监听。
+ */
+
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps<{
@@ -13,6 +25,7 @@ const emit = defineEmits<{
 const open = ref(false)
 const wrapperRef = ref<HTMLElement | null>(null)
 
+/** 当前激活个交易行对象 */
 const active = computed(() => props.exchanges.find(e => e.id === props.modelValue))
 
 function select(id: string) {
@@ -20,6 +33,7 @@ function select(id: string) {
   open.value = false
 }
 
+/** 点击组件外部关闭下拉 */
 function handleClickOutside(e: MouseEvent) {
   if (wrapperRef.value && !wrapperRef.value.contains(e.target as Node)) {
     open.value = false
@@ -32,10 +46,13 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside))
 
 <template>
   <div ref="wrapperRef" class="exch-selector">
+    <!-- 触发器：显示当前交易行名称 + ▼ -->
     <button class="es-trigger" @click="open = !open" type="button">
       <span class="es-name">{{ active?.name ?? 'Select...' }}</span>
       <span class="es-arrow" :class="{ open }">▾</span>
     </button>
+
+    <!-- 下拉列表 -->
     <div v-if="open" class="es-dropdown">
       <div
         v-for="e in exchanges"
@@ -48,6 +65,7 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside))
           <span class="es-name">{{ e.name }}</span>
           <span class="es-desc">{{ e.description }}</span>
         </div>
+        <!-- 激活项显示 ✓ -->
         <span v-if="e.id === modelValue" class="es-check">✓</span>
       </div>
     </div>
@@ -55,10 +73,7 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside))
 </template>
 
 <style scoped>
-.exch-selector {
-  position: relative;
-  min-width: 150px;
-}
+.exch-selector { position: relative; min-width: 150px; }
 .es-trigger {
   display: flex;
   align-items: center;
@@ -72,9 +87,7 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside))
   font-size: 13px;
   cursor: pointer;
 }
-.es-trigger:hover {
-  border-color: var(--border-accent);
-}
+.es-trigger:hover { border-color: var(--border-accent); }
 .es-name {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -86,14 +99,12 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside))
   color: var(--text-secondary);
   transition: transform 0.15s;
 }
-.es-arrow.open {
-  transform: rotate(180deg);
-}
+.es-arrow.open { transform: rotate(180deg); }
+
 .es-dropdown {
   position: absolute;
   top: 100%;
-  left: 0;
-  right: 0;
+  left: 0; right: 0;
   min-width: 260px;
   margin-top: 4px;
   background: var(--bg-card);
@@ -111,34 +122,13 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside))
   cursor: pointer;
   transition: background 0.1s;
 }
-.es-item:hover {
-  background: var(--bg-card-hover);
-}
-.es-item.active {
-  background: var(--accent-primary);
-}
+.es-item:hover { background: var(--bg-card-hover); }
+.es-item.active { background: var(--accent-primary); }
 .es-item.active .es-name,
-.es-item.active .es-desc {
-  color: #fff;
-}
-.es-info {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-.es-info .es-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-.es-info .es-desc {
-  font-size: 11px;
-  color: var(--text-secondary);
-  line-height: 1.4;
-}
-.es-check {
-  margin-left: auto;
-  color: #fff;
-  font-size: 13px;
-}
+.es-item.active .es-desc { color: #fff; }
+
+.es-info { display: flex; flex-direction: column; min-width: 0; }
+.es-info .es-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.es-info .es-desc { font-size: 11px; color: var(--text-secondary); line-height: 1.4; }
+.es-check { margin-left: auto; color: #fff; font-size: 13px; }
 </style>
