@@ -1,24 +1,5 @@
-import type { StrategyPlugin, AnalysisResult, OHLCV, Rating, Signal } from '@/types'
-
-function calcEMA(data: number[], period: number): number[] {
-  const result: number[] = []
-  const k = 2 / (period + 1)
-  let prev = data[0]
-  result.push(prev)
-  for (let i = 1; i < data.length; i++) {
-    prev = data[i] * k + prev * (1 - k)
-    result.push(prev)
-  }
-  return result
-}
-
-function scoreToRating(score: number): Rating {
-  if (score >= 70) return 'bullish'
-  if (score >= 55) return 'slightly_bullish'
-  if (score >= 45) return 'neutral'
-  if (score >= 30) return 'slightly_bearish'
-  return 'bearish'
-}
+import type { StrategyPlugin, AnalysisResult, OHLCV, Signal } from '@/types'
+import { calcEMA, scoreToRating } from '@/utils/indicators'
 
 export const emaStrategy: StrategyPlugin = {
   id: 'ema-mtf',
@@ -28,11 +9,26 @@ export const emaStrategy: StrategyPlugin = {
   description: 'EMA alignment analysis (9, 21, 50) — multi-timeframe trend confirmation',
 
   analyze(data: OHLCV[]): AnalysisResult {
+    if (data.length < 2) {
+      return {
+        strategyId: 'ema-mtf',
+        strategyName: 'EMA Multi-Timeframe',
+        rating: 'neutral',
+        score: 50,
+        signals: [],
+        indicators: [],
+        summary: '数据不足，需要至少2根K线',
+        summaryKey: 'summary.ema_mixed',
+        timestamp: Date.now(),
+      }
+    }
+
     const closes = data.map(d => d.close)
     const ema9 = calcEMA(closes, 9)
     const ema21 = calcEMA(closes, 21)
     const ema50 = calcEMA(closes, 50)
     const last = closes.length - 1
+    const prev = last - 1
     const price = closes[last]
 
     const e9 = ema9[last]
@@ -73,7 +69,7 @@ export const emaStrategy: StrategyPlugin = {
     if (e9 > e21) score += 5; else score -= 5
     if (e21 > e50) score += 3; else score -= 3
 
-    const ema9Slope = e9 - ema9[last - 1]
+    const ema9Slope = e9 - ema9[prev]
     if (ema9Slope > 0) score += 4
     else score -= 4
 

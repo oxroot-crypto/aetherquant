@@ -1,24 +1,5 @@
-import type { StrategyPlugin, AnalysisResult, OHLCV, Rating, Signal } from '@/types'
-
-function calcEMA(data: number[], period: number): number[] {
-  const result: number[] = []
-  const k = 2 / (period + 1)
-  let prevEma = data[0]
-  result.push(prevEma)
-  for (let i = 1; i < data.length; i++) {
-    prevEma = data[i] * k + prevEma * (1 - k)
-    result.push(prevEma)
-  }
-  return result
-}
-
-function scoreToRating(score: number): Rating {
-  if (score >= 70) return 'bullish'
-  if (score >= 55) return 'slightly_bullish'
-  if (score >= 45) return 'neutral'
-  if (score >= 30) return 'slightly_bearish'
-  return 'bearish'
-}
+import type { StrategyPlugin, AnalysisResult, OHLCV, Signal } from '@/types'
+import { calcEMA, scoreToRating } from '@/utils/indicators'
 
 export const macdStrategy: StrategyPlugin = {
   id: 'macd',
@@ -79,7 +60,8 @@ export const macdStrategy: StrategyPlugin = {
     if (histNow > 0 && histNow > histPrev) score += 7
     else if (histNow > 0 && histNow < histPrev) score -= 3
     else if (histNow < 0 && histNow < histPrev) score -= 7
-    else score += 3
+    else if (histNow < 0 && histNow > histPrev) score += 3
+    // else histNow === histPrev: no change, score stays neutral
 
     if (histNow > 0 && histPrev <= 0) score += 5
     if (histNow < 0 && histPrev >= 0) score -= 5

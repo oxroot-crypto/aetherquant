@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import { pluginManager } from '@/plugin-system/PluginManager'
 import type { OHLCV, AnalysisResult, Rating } from '@/types'
+import { scoreToRating } from '@/utils/indicators'
 
 export function useAnalysis() {
   const results = ref<AnalysisResult[]>([])
@@ -40,12 +41,4 @@ export function useAnalysis() {
     bearishCount,
     run,
   }
-}
-
-function scoreToRating(score: number): Rating {
-  if (score >= 70) return 'bullish'
-  if (score >= 55) return 'slightly_bullish'
-  if (score >= 45) return 'neutral'
-  if (score >= 30) return 'slightly_bearish'
-  return 'bearish'
 }

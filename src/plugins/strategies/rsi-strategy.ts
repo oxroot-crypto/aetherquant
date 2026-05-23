@@ -1,4 +1,5 @@
 import type { StrategyPlugin, AnalysisResult, OHLCV, Rating, Signal } from '@/types'
+import { scoreToRating } from '@/utils/indicators'
 
 function calcRSI(closes: number[], period: number): number[] {
   const rsi: number[] = []
@@ -25,14 +26,6 @@ function calcRSI(closes: number[], period: number): number[] {
   }
 
   return rsi
-}
-
-function scoreToRating(score: number): Rating {
-  if (score >= 70) return 'bullish'
-  if (score >= 55) return 'slightly_bullish'
-  if (score >= 45) return 'neutral'
-  if (score >= 30) return 'slightly_bearish'
-  return 'bearish'
 }
 
 export const rsiStrategy: StrategyPlugin = {

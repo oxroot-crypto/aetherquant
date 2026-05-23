@@ -1,4 +1,5 @@
-import type { StrategyPlugin, AnalysisResult, OHLCV, Rating, Signal } from '@/types'
+import type { StrategyPlugin, AnalysisResult, OHLCV, Signal } from '@/types'
+import { calcSMA, scoreToRating } from '@/utils/indicators'
 
 interface BollingerResult {
   middle: number
@@ -6,17 +7,6 @@ interface BollingerResult {
   lower: number
   bandwidth: number
   percentB: number
-}
-
-function calcSMA(data: number[], period: number): number[] {
-  const result: number[] = []
-  for (let i = 0; i < data.length; i++) {
-    if (i < period - 1) { result.push(NaN); continue }
-    let sum = 0
-    for (let j = i - period + 1; j <= i; j++) sum += data[j]
-    result.push(sum / period)
-  }
-  return result
 }
 
 function calcBollinger(closes: number[], period: number, stdDev: number): BollingerResult[] {
@@ -36,21 +26,14 @@ function calcBollinger(closes: number[], period: number, stdDev: number): Bollin
     const std = Math.sqrt(sumSq / period)
     const upper = sma[i] + stdDev * std
     const lower = sma[i] - stdDev * std
-    const bandwidth = (upper - lower) / sma[i]
-    const percentB = (closes[i] - lower) / (upper - lower)
+    const bandwidth = sma[i] !== 0 ? (upper - lower) / sma[i] : 0
+    const range = upper - lower
+    const percentB = range > 0 ? (closes[i] - lower) / range : 0.5
 
     results.push({ middle: sma[i], upper, lower, bandwidth, percentB })
   }
 
   return results
-}
-
-function scoreToRating(score: number): Rating {
-  if (score >= 70) return 'bullish'
-  if (score >= 55) return 'slightly_bullish'
-  if (score >= 45) return 'neutral'
-  if (score >= 30) return 'slightly_bearish'
-  return 'bearish'
 }
 
 export const bollingerStrategy: StrategyPlugin = {

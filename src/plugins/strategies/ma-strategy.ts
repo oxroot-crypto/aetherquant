@@ -1,26 +1,5 @@
-import type { StrategyPlugin, AnalysisResult, OHLCV, Rating, Signal } from '@/types'
-
-function calcSMA(data: number[], period: number): number[] {
-  const result: number[] = []
-  for (let i = 0; i < data.length; i++) {
-    if (i < period - 1) {
-      result.push(NaN)
-    } else {
-      let sum = 0
-      for (let j = i - period + 1; j <= i; j++) sum += data[j]
-      result.push(sum / period)
-    }
-  }
-  return result
-}
-
-function scoreToRating(score: number): Rating {
-  if (score >= 70) return 'bullish'
-  if (score >= 55) return 'slightly_bullish'
-  if (score >= 45) return 'neutral'
-  if (score >= 30) return 'slightly_bearish'
-  return 'bearish'
-}
+import type { StrategyPlugin, AnalysisResult, OHLCV, Signal } from '@/types'
+import { calcSMA, scoreToRating } from '@/utils/indicators'
 
 export const maStrategy: StrategyPlugin = {
   id: 'ma-crossover',
@@ -30,6 +9,20 @@ export const maStrategy: StrategyPlugin = {
   description: 'Golden Cross / Death Cross detection using MA7 and MA25 crossovers',
 
   analyze(data: OHLCV[]): AnalysisResult {
+    if (data.length < 25) {
+      return {
+        strategyId: 'ma-crossover',
+        strategyName: 'MA Crossover',
+        rating: 'neutral',
+        score: 50,
+        signals: [],
+        indicators: [],
+        summary: '数据不足，需要至少25根K线',
+        summaryKey: 'summary.ma_neutral',
+        timestamp: Date.now(),
+      }
+    }
+
     const closes = data.map(d => d.close)
     const ma7 = calcSMA(closes, 7)
     const ma25 = calcSMA(closes, 25)

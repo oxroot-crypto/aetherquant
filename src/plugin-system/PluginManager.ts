@@ -58,6 +58,7 @@ class PluginManagerImpl {
   }
 
   toggleStrategy(id: string): void {
+    if (!this.strategies.has(id)) return
     if (this.activeStrategyIds.has(id)) {
       this.activeStrategyIds.delete(id)
     } else {
@@ -99,7 +100,8 @@ class PluginManagerImpl {
       activeStrategies.map(s => {
         try {
           return s.analyze(data)
-        } catch {
+        } catch (e) {
+          console.error(`[PluginManager] Strategy "${s.id}" failed:`, e)
           return null
         }
       })
