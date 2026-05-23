@@ -1,15 +1,15 @@
 import { ref, onMounted, onUnmounted } from 'vue'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 
 const isTauri = '__TAURI_INTERNALS__' in window
+const win = isTauri ? getCurrentWindow() : null
 
 export function useTauri() {
   const isMaximized = ref(false)
   let unlisten: (() => void) | null = null
 
   onMounted(async () => {
-    if (!isTauri) return
-    const { getCurrentWindow } = await import('@tauri-apps/api/window')
-    const win = getCurrentWindow()
+    if (!win) return
     isMaximized.value = await win.isMaximized()
     unlisten = await win.onResized(async () => {
       isMaximized.value = await win.isMaximized()
@@ -20,22 +20,16 @@ export function useTauri() {
     unlisten?.()
   })
 
-  async function minimize() {
-    if (!isTauri) return
-    const { getCurrentWindow } = await import('@tauri-apps/api/window')
-    await getCurrentWindow().minimize()
+  function minimize() {
+    win?.minimize()
   }
 
-  async function toggleMaximize() {
-    if (!isTauri) return
-    const { getCurrentWindow } = await import('@tauri-apps/api/window')
-    await getCurrentWindow().toggleMaximize()
+  function toggleMaximize() {
+    win?.toggleMaximize()
   }
 
-  async function close() {
-    if (!isTauri) return
-    const { getCurrentWindow } = await import('@tauri-apps/api/window')
-    await getCurrentWindow().close()
+  function close() {
+    win?.close()
   }
 
   return { isTauri, isMaximized, minimize, toggleMaximize, close }

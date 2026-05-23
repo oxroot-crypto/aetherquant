@@ -2,22 +2,40 @@
   "name": "aetherquant",
   "private": true,
   "version": "1.0.0",
+  "description": "AetherQuant — Cryptocurrency K-Line Quantitative Analysis Platform",
   "author": "oxroot",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oxroot-crypto/aetherquant"
+  },
+  "keywords": [
+    "cryptocurrency",
+    "kline",
+    "candlestick",
+    "quantitative-analysis",
+    "technical-indicators",
+    "hyperliquid",
+    "tauri",
+    "vue3",
+    "tradingview"
+  ],
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
+    "tauri:icon": "tauri icon ./src/assets/icon.svg",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.11.0",
     "lightweight-charts": "^5.2.0",
     "vue": "^3.5.34",
     "vue-i18n": "^10.0.7"
   },
   "devDependencies": {
-    "@tauri-apps/api": "^2.11.0",
     "@tauri-apps/cli": "^2.11.2",
     "@types/node": "^24.12.3",
     "@vitejs/plugin-vue": "^6.0.6",
