@@ -4,7 +4,7 @@ export default {
     subtitle: '量化分析平台',
   },
   toolbar: {
-    source: '数据源',
+    exchange: '交易所',
     symbol: '交易对',
     interval: '周期',
     candles: 'K线数',

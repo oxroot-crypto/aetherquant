@@ -53,7 +53,7 @@
 
 AetherQuant is a desktop-grade cryptocurrency technical analysis workstation. It renders interactive candlestick charts, runs five independent quantitative strategies in parallel, and aggregates their output into a unified consensus rating — all fed by live market data from Hyperliquid DEX over a persistent WebSocket connection.
 
-The entire system is plugin-driven: swap data sources to target a different exchange, or plug in your own strategy module without touching the core.
+The entire system is plugin-driven: swap exchanges to pull data from a different venue, or plug in your own strategy module without touching the core.
 
 ## Features
 
@@ -172,8 +172,8 @@ src/
 ├── plugin-system/
 │   └── PluginManager.ts Registry, activation, pub/sub
 ├── plugins/
-│   ├── data-sources/
-│   │   └── hyperliquid-source.ts
+│   ├── exchanges/
+│   │   └── hyperliquid.ts
 │   └── strategies/
 │       ├── ma-strategy.ts
 │       ├── macd-strategy.ts
@@ -255,25 +255,26 @@ export const myStrategy: StrategyPlugin = {
 pluginManager.registerStrategy(myStrategy)
 ```
 
-### Data Source Plugin
+### Exchange Plugin
 
 ```ts
-import type { DataSourcePlugin } from '@/types'
+import type { ExchangePlugin } from '@/types'
 
-export const mySource: DataSourcePlugin = {
-  id: 'my-source',
+export const myExchange: ExchangePlugin = {
+  id: 'my-exchange',
   name: 'My Exchange',
   version: '1.0.0',
-  type: 'data-source',
+  type: 'exchange',
   description: 'Custom exchange adapter',
   async fetchData(symbol, interval, limit) { /* → OHLCV[] */ },
   async fetchRange?(symbol, interval, start, end) { /* → OHLCV[] */ },
+  subscribe?(symbol, interval, onCandle) { /* → unsubscribe fn */ },
   getSupportedSymbols() { return ['BTC/USDT', 'ETH/USDT'] },
   getSupportedIntervals() { return ['1m', '5m', '15m', '1h', '4h', '1d'] },
 }
 
-pluginManager.registerDataSource(mySource)
-pluginManager.setActiveDataSource('my-source')
+pluginManager.registerExchange(myExchange)
+pluginManager.setActiveExchange('my-exchange')
 ```
 
 ## Contributors

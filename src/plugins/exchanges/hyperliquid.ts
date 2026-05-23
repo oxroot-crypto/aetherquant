@@ -1,4 +1,4 @@
-import type { DataSourcePlugin, OHLCV, CandleInterval } from '@/types'
+import type { ExchangePlugin, OHLCV, CandleInterval } from '@/types'
 
 const API_URL = 'https://api.hyperliquid.xyz/info'
 
@@ -130,14 +130,112 @@ async function fetchByRange(
     .sort((a, b) => a.timestamp - b.timestamp)
 }
 
+const WS_URL = 'wss://api.hyperliquid.xyz/ws'
+
+let wsInstance: WebSocket | null = null
+let wsSubs: Map<string, Array<(c: OHLCV) => void>> = new Map()
+let wsCoin = ''
+let wsInterval = ''
+let wsReconnectTimer: ReturnType<typeof setTimeout> | null = null
+let wsDestroyed = false
+
+function wsKey(coin: string, interval: string) { return `${coin}:${interval}` }
+
+function getWs(): WebSocket {
+  if (!wsInstance || wsInstance.readyState > WebSocket.OPEN) {
+    wsInstance = new WebSocket(WS_URL)
+    wsInstance.onopen = () => {
+      if (wsCoin && wsInterval) {
+        wsInstance!.send(JSON.stringify({
+          method: 'subscribe',
+          subscription: { type: 'candle', coin: wsCoin, interval: wsInterval },
+        }))
+      }
+    }
+    wsInstance.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data)
+        const candles = Array.isArray(msg.data) ? msg.data as HlCandle[] : (msg.data ? [msg.data as HlCandle] : [])
+        for (const c of candles) {
+          if (!c.t || !c.s) continue
+          if (c.s !== wsCoin || (c.i && c.i !== wsInterval)) continue
+          const ohlcv: OHLCV = {
+            timestamp: Number(c.t),
+            open: Number(c.o),
+            high: Number(c.h),
+            low: Number(c.l),
+            close: Number(c.c),
+            volume: Number(c.v),
+          }
+          const key = wsKey(wsCoin, wsInterval)
+          const subs = wsSubs.get(key)
+          if (subs) for (const fn of subs) fn(ohlcv)
+        }
+      } catch { /* skip */ }
+    }
+    wsInstance.onclose = () => {
+      if (wsDestroyed) return
+      wsReconnectTimer = setTimeout(() => {
+        wsInstance = null
+        getWs()
+      }, 3000)
+    }
+    wsInstance.onerror = () => wsInstance?.close()
+  }
+  return wsInstance
+}
+
+function subscribeWs(coin: string, interval: CandleInterval, onCandle: (c: OHLCV) => void): () => void {
+  if (wsDestroyed) return () => {}
+
+  const oldCoin = wsCoin
+  const oldInterval = wsInterval
+  const oldKey = wsKey(oldCoin, oldInterval)
+  const newKey = wsKey(coin, String(interval))
+
+  const ws = getWs()
+  const isNewStream = coin !== oldCoin || interval !== oldInterval
+
+  if (isNewStream && ws.readyState === WebSocket.OPEN && oldCoin) {
+    ws.send(JSON.stringify({
+      method: 'unsubscribe',
+      subscription: { type: 'candle', coin: oldCoin, interval: oldInterval },
+    }))
+  }
+
+  wsCoin = coin
+  wsInterval = interval as string
+
+  if (isNewStream) {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        method: 'subscribe',
+        subscription: { type: 'candle', coin, interval },
+      }))
+    }
+  }
+
+  if (!wsSubs.has(newKey)) wsSubs.set(newKey, [])
+  wsSubs.get(newKey)!.push(onCandle)
+
+  return () => {
+    const subs = wsSubs.get(newKey)
+    if (subs) {
+      const idx = subs.indexOf(onCandle)
+      if (idx >= 0) subs.splice(idx, 1)
+      if (subs.length === 0) wsSubs.delete(newKey)
+    }
+  }
+}
+
 export { fetchMetaCoins }
 
-export const hyperliquidSource: DataSourcePlugin = {
+export const hyperliquidSource: ExchangePlugin = {
   id: 'hyperliquid',
   name: 'Hyperliquid',
   version: '1.0.0',
-  type: 'data-source',
-  description: 'Real-time candlestick data from Hyperliquid DEX via info API',
+  type: 'exchange',
+  description: 'Perpetuals DEX — high-performance L1, fully on-chain order book',
 
   async fetchData(symbol: string, interval: CandleInterval, limit: number): Promise<OHLCV[]> {
     const coin = fromDisplaySymbol(symbol)
@@ -166,8 +264,13 @@ export const hyperliquidSource: DataSourcePlugin = {
     return fetchByRange(coin, interval, startTime, endTime)
   },
 
+  subscribe(symbol: string, interval: CandleInterval, onCandle: (c: OHLCV) => void): () => void {
+    const coin = fromDisplaySymbol(symbol)
+    return subscribeWs(coin, interval, onCandle)
+  },
+
   getSupportedSymbols(): string[] {
-    fetchMetaCoins() // fire-and-forget to populate cache
+    fetchMetaCoins()
     return getCoins().map(toDisplaySymbol)
   },
 

@@ -2,29 +2,26 @@
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import CoinSelector from '@/components/CoinSelector.vue'
+import ExchangeSelector from '@/components/ExchangeSelector.vue'
 import type { CandleInterval } from '@/types'
 
 const { t } = useI18n()
 
 const props = defineProps<{
   symbols: string[]
-  sources: { id: string; name: string }[]
-  activeSourceId: string | null
+  exchanges: { id: string; name: string; description: string }[]
+  activeExchangeId: string | null
 }>()
 
 const emit = defineEmits<{
   'update:symbol': [symbol: string]
   'update:interval': [interval: CandleInterval]
-  'update:limit': [limit: number]
-  'update:source': [sourceId: string]
+  'update:exchange': [exchangeId: string]
   refresh: []
 }>()
 
 const selectedSymbol = ref(props.symbols[0] ?? '')
 const selectedInterval = ref<CandleInterval>('1h')
-const selectedLimit = ref(200)
-
-const limits = [50, 100, 200, 300, 500]
 
 watch(() => props.symbols, (syms) => {
   if (!syms.includes(selectedSymbol.value)) {
@@ -46,7 +43,6 @@ const intervals: { value: CandleInterval; label: string }[] = [
 function emitAll() {
   emit('update:symbol', selectedSymbol.value)
   emit('update:interval', selectedInterval.value)
-  emit('update:limit', selectedLimit.value)
   emit('refresh')
 }
 </script>
@@ -55,13 +51,12 @@ function emitAll() {
   <div class="toolbar">
     <div class="toolbar-left">
       <div class="control-group">
-        <label>{{ t('toolbar.source') }}</label>
-        <select
-          :value="activeSourceId"
-          @change="emit('update:source', ($event.target as HTMLSelectElement).value)"
-        >
-          <option v-for="s in sources" :key="s.id" :value="s.id">{{ s.name }}</option>
-        </select>
+        <label>{{ t('toolbar.exchange') }}</label>
+        <ExchangeSelector
+          :modelValue="activeExchangeId ?? ''"
+          :exchanges="exchanges"
+          @update:modelValue="emit('update:exchange', $event)"
+        />
       </div>
       <div class="control-group">
         <label>{{ t('toolbar.symbol') }}</label>
@@ -83,12 +78,6 @@ function emitAll() {
             {{ iv.label }}
           </button>
         </div>
-      </div>
-      <div class="control-group">
-        <label>{{ t('toolbar.candles') }}</label>
-        <select :value="selectedLimit" @change="selectedLimit = Number(($event.target as HTMLSelectElement).value); emitAll()">
-          <option v-for="n in limits" :key="n" :value="n">{{ n }}</option>
-        </select>
       </div>
     </div>
     <div class="toolbar-center">

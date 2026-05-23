@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { pluginManager } from '@/plugin-system/PluginManager'
-import { hyperliquidSource, fetchMetaCoins } from '@/plugins/data-sources/hyperliquid-source'
+import { hyperliquidSource, fetchMetaCoins } from '@/plugins/exchanges/hyperliquid'
 import { maStrategy, macdStrategy, rsiStrategy, bollingerStrategy, emaStrategy } from '@/plugins/strategies'
 import { useAnalysis } from '@/composables/useAnalysis'
 import { useRealtime } from '@/composables/useRealtime'
@@ -14,7 +14,6 @@ import type { OHLCV, CandleInterval } from '@/types'
 
 const symbol = ref('')
 const interval = ref<CandleInterval>('1h')
-const limit = ref(200)
 const data = ref<OHLCV[]>([])
 const dataLoading = ref(false)
 
@@ -23,17 +22,21 @@ pluginManager.subscribe(() => { pluginTick.value++ })
 
 const sources = computed(() => {
   void pluginTick.value
-  return pluginManager.getAllDataSources().map(ds => ({ id: ds.id, name: ds.name }))
+  return pluginManager.getAllExchanges().map(e => ({
+    id: e.id,
+    name: e.name,
+    description: e.description,
+  }))
 })
 
 const activeSourceId = computed(() => {
   void pluginTick.value
-  return pluginManager.getActiveDataSource()?.id ?? null
+  return pluginManager.getActiveExchange()?.id ?? null
 })
 
 const symbols = computed(() => {
   void pluginTick.value
-  return pluginManager.getActiveDataSource()?.getSupportedSymbols() ?? []
+  return pluginManager.getActiveExchange()?.getSupportedSymbols() ?? []
 })
 
 const { locale: i18nLocale } = useI18n()
@@ -82,17 +85,10 @@ function plotIndicators() {
   chartRef.value.setIndicator('ma25', d, (_d, i) => ma25[i])
 }
 
-const { connected: liveConnected, lastMsg, connect: wsConnect } = useRealtime(handleRealtimeCandle)
-
-function startWs() {
-  if (symbol.value && activeSourceId.value === 'hyperliquid') {
-    const coin = symbol.value.replace('/USDT', '')
-    wsConnect(coin, interval.value)
-  }
-}
+const { connected: liveConnected, lastMsg, start: wsStart } = useRealtime(handleRealtimeCandle)
 
 onMounted(async () => {
-  pluginManager.registerDataSource(hyperliquidSource)
+  pluginManager.registerExchange(hyperliquidSource)
   pluginManager.registerStrategy(maStrategy)
   pluginManager.registerStrategy(macdStrategy)
   pluginManager.registerStrategy(rsiStrategy)
@@ -111,12 +107,12 @@ async function fetchData() {
   if (!symbol.value) return
   dataLoading.value = true
   try {
-    const result = await pluginManager.fetchData(symbol.value, interval.value, limit.value)
+    const result = await pluginManager.fetchData(symbol.value, interval.value, 200)
     data.value = result
     await run(result)
     await nextTick()
     plotIndicators()
-    startWs()
+    wsStart(symbol.value, interval.value)
   } catch (e) {
     console.error('Failed to fetch data:', e)
   } finally {
@@ -126,11 +122,10 @@ async function fetchData() {
 
 function handleSymbolChange(s: string) { symbol.value = s; fetchData() }
 function handleIntervalChange(iv: CandleInterval) { interval.value = iv; fetchData() }
-function handleLimitChange(n: number) { limit.value = n; fetchData() }
 
 function handleSourceChange(sourceId: string) {
-  pluginManager.setActiveDataSource(sourceId)
-  const s = pluginManager.getActiveDataSource()?.getSupportedSymbols() ?? []
+  pluginManager.setActiveExchange(sourceId)
+  const s = pluginManager.getActiveExchange()?.getSupportedSymbols() ?? []
   symbol.value = s[0] ?? ''
   fetchData()
 }
@@ -149,12 +144,11 @@ function handleLangChange(lang: string) {
     <TitleBar @update:lang="handleLangChange" />
     <Toolbar
       :symbols="symbols"
-      :sources="sources"
-      :activeSourceId="activeSourceId"
+      :exchanges="sources"
+      :activeExchangeId="activeSourceId"
       @update:symbol="handleSymbolChange"
       @update:interval="handleIntervalChange"
-      @update:limit="handleLimitChange"
-      @update:source="handleSourceChange"
+      @update:exchange="handleSourceChange"
       @refresh="fetchData()"
     >
       <template #extra>

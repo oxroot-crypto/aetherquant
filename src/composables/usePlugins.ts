@@ -1,25 +1,25 @@
 import { reactive, computed, onMounted, onUnmounted } from 'vue'
 import { pluginManager } from '@/plugin-system/PluginManager'
-import type { DataSourcePlugin, StrategyPlugin } from '@/types'
+import type { ExchangePlugin, StrategyPlugin } from '@/types'
 
 export function usePlugins() {
   const state = reactive({
-    dataSources: [] as DataSourcePlugin[],
+    exchanges: [] as ExchangePlugin[],
     strategies: [] as StrategyPlugin[],
-    activeDataSourceId: null as string | null,
+    activeExchangeId: null as string | null,
     activeStrategyIds: new Set<string>(),
   })
 
   let unsub: (() => void) | null = null
 
   function refresh() {
-    state.dataSources = pluginManager.getAllDataSources()
+    state.exchanges = pluginManager.getAllExchanges()
     state.strategies = pluginManager.getAllStrategies()
     state.activeStrategyIds = new Set(
       state.strategies.filter(s => pluginManager.isStrategyActive(s.id)).map(s => s.id)
     )
-    const active = pluginManager.getActiveDataSource()
-    state.activeDataSourceId = active?.id ?? null
+    const active = pluginManager.getActiveExchange()
+    state.activeExchangeId = active?.id ?? null
   }
 
   onMounted(() => {
@@ -31,14 +31,14 @@ export function usePlugins() {
     unsub?.()
   })
 
-  const activeDataSource = computed(() =>
-    state.dataSources.find(ds => ds.id === state.activeDataSourceId) ?? null
+  const activeExchange = computed(() =>
+    state.exchanges.find(e => e.id === state.activeExchangeId) ?? null
   )
 
   return {
     state,
-    activeDataSource,
-    setActiveDataSource: (id: string) => pluginManager.setActiveDataSource(id),
+    activeExchange,
+    setActiveExchange: (id: string) => pluginManager.setActiveExchange(id),
     toggleStrategy: (id: string) => pluginManager.toggleStrategy(id),
   }
 }

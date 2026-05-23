@@ -39,16 +39,17 @@ export interface StrategyPlugin {
   analyze(data: OHLCV[]): AnalysisResult
 }
 
-export interface DataSourcePlugin {
+export interface ExchangePlugin {
   id: string
   name: string
   version: string
-  type: 'data-source'
+  type: 'exchange'
   description: string
   fetchData(symbol: string, interval: CandleInterval, limit: number): Promise<OHLCV[]>
   fetchRange?(symbol: string, interval: CandleInterval, startTime: number, endTime: number): Promise<OHLCV[]>
+  subscribe?(symbol: string, interval: CandleInterval, onCandle: (c: OHLCV) => void): () => void
   getSupportedSymbols(): string[]
   getSupportedIntervals(): CandleInterval[]
 }
 
-export type Plugin = StrategyPlugin | DataSourcePlugin
+export type Plugin = StrategyPlugin | ExchangePlugin

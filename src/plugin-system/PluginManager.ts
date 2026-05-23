@@ -1,17 +1,17 @@
-import type { Plugin, DataSourcePlugin, StrategyPlugin, AnalysisResult } from '@/types'
+import type { Plugin, ExchangePlugin, StrategyPlugin, AnalysisResult } from '@/types'
 import type { OHLCV, CandleInterval } from '@/types'
 
 class PluginManagerImpl {
-  private dataSources = new Map<string, DataSourcePlugin>()
+  private exchanges = new Map<string, ExchangePlugin>()
   private strategies = new Map<string, StrategyPlugin>()
-  private activeDataSourceId: string | null = null
+  private activeExchangeId: string | null = null
   private activeStrategyIds = new Set<string>()
   private listeners = new Set<() => void>()
 
-  registerDataSource(plugin: DataSourcePlugin): void {
-    this.dataSources.set(plugin.id, plugin)
-    if (!this.activeDataSourceId) {
-      this.activeDataSourceId = plugin.id
+  registerExchange(plugin: ExchangePlugin): void {
+    this.exchanges.set(plugin.id, plugin)
+    if (!this.activeExchangeId) {
+      this.activeExchangeId = plugin.id
     }
     this.notify()
   }
@@ -23,30 +23,30 @@ class PluginManagerImpl {
   }
 
   unregisterPlugin(id: string): void {
-    this.dataSources.delete(id)
+    this.exchanges.delete(id)
     this.strategies.delete(id)
     this.activeStrategyIds.delete(id)
-    if (this.activeDataSourceId === id) {
-      const first = this.dataSources.keys().next().value
-      this.activeDataSourceId = first ?? null
+    if (this.activeExchangeId === id) {
+      const first = this.exchanges.keys().next().value
+      this.activeExchangeId = first ?? null
     }
     this.notify()
   }
 
-  getActiveDataSource(): DataSourcePlugin | null {
-    if (!this.activeDataSourceId) return null
-    return this.dataSources.get(this.activeDataSourceId) ?? null
+  getActiveExchange(): ExchangePlugin | null {
+    if (!this.activeExchangeId) return null
+    return this.exchanges.get(this.activeExchangeId) ?? null
   }
 
-  setActiveDataSource(id: string): void {
-    if (this.dataSources.has(id)) {
-      this.activeDataSourceId = id
+  setActiveExchange(id: string): void {
+    if (this.exchanges.has(id)) {
+      this.activeExchangeId = id
       this.notify()
     }
   }
 
-  getAllDataSources(): DataSourcePlugin[] {
-    return [...this.dataSources.values()]
+  getAllExchanges(): ExchangePlugin[] {
+    return [...this.exchanges.values()]
   }
 
   getAllStrategies(): StrategyPlugin[] {
@@ -71,18 +71,26 @@ class PluginManagerImpl {
   }
 
   async fetchData(symbol: string, interval: CandleInterval, limit: number): Promise<OHLCV[]> {
-    const source = this.getActiveDataSource()
-    if (!source) throw new Error('No active data source')
-    return source.fetchData(symbol, interval, limit)
+    const exchange = this.getActiveExchange()
+    if (!exchange) throw new Error('No active exchange')
+    return exchange.fetchData(symbol, interval, limit)
   }
 
   async fetchRange(symbol: string, interval: CandleInterval, startTime: number, endTime: number): Promise<OHLCV[]> {
-    const source = this.getActiveDataSource()
-    if (!source) throw new Error('No active data source')
-    if (source.fetchRange) {
-      return source.fetchRange(symbol, interval, startTime, endTime)
+    const exchange = this.getActiveExchange()
+    if (!exchange) throw new Error('No active exchange')
+    if (exchange.fetchRange) {
+      return exchange.fetchRange(symbol, interval, startTime, endTime)
     }
     return []
+  }
+
+  subscribeRealtime(symbol: string, interval: CandleInterval, onCandle: (c: import('@/types').OHLCV) => void): () => void {
+    const exchange = this.getActiveExchange()
+    if (exchange?.subscribe) {
+      return exchange.subscribe(symbol, interval, onCandle)
+    }
+    return () => {}
   }
 
   async runAnalysis(data: OHLCV[]): Promise<AnalysisResult[]> {

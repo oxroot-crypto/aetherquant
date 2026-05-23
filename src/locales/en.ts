@@ -4,7 +4,7 @@ export default {
     subtitle: 'Quantitative Analysis Platform',
   },
   toolbar: {
-    source: 'Source',
+    exchange: 'Exchange',
     symbol: 'Symbol',
     interval: 'Interval',
     candles: 'Candles',
