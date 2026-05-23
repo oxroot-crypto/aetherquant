@@ -27,7 +27,8 @@
     "preview": "vite preview",
     "tauri:icon": "tauri icon ./src/assets/icon.svg",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "version:sync": "node scripts/sync-version.cjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.0",
