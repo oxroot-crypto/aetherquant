@@ -128,7 +128,7 @@ const INDICATOR_STYLES: Record<string, LineSeriesPartialOptions> = {
   bbUpper: { color: '#4caf50', lineWidth: 1, priceLineVisible: false, lineStyle: 2 },
   bbMiddle: { color: '#ffeb3b', lineWidth: 1, priceLineVisible: false },
   bbLower: { color: '#f44336', lineWidth: 1, priceLineVisible: false, lineStyle: 2 },
-  rsi: { color: '#00e5ff', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: true },
+  rsi: { color: '#00e5ff', lineWidth: 2, priceLineVisible: false, lastValueVisible: true },
 }
 
 /**
